@@ -1,18 +1,25 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Paper } from "@/types/paper";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+let _supabaseAdmin: SupabaseClient | null = null;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+function getSupabaseAdmin(): SupabaseClient {
+  if (_supabaseAdmin) return _supabaseAdmin;
 
-export const supabaseAdmin = supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey)
-  : createClient(supabaseUrl, supabaseAnonKey);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  _supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+  return _supabaseAdmin;
+}
+
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder"
+);
 
 export async function getAllPapers(): Promise<Paper[]> {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("papers")
     .select("*")
     .order("published_date", { ascending: false });
@@ -34,7 +41,7 @@ export async function getPapersWithFilter(options: {
 }): Promise<{ papers: Paper[]; total: number; todayCount: number }> {
   const { tag, search, sort = "date-desc", page = 1, limit = 20 } = options;
 
-  let query = supabaseAdmin.from("papers").select("*", { count: "exact" });
+  let query = getSupabaseAdmin().from("papers").select("*", { count: "exact" });
 
   if (tag && tag !== "all") {
     query = query.contains("tags", [tag]);
@@ -65,7 +72,7 @@ export async function getPapersWithFilter(options: {
   }
 
   const today = new Date().toISOString().split("T")[0];
-  const { count: todayCount } = await supabaseAdmin
+  const { count: todayCount } = await getSupabaseAdmin()
     .from("papers")
     .select("*", { count: "exact", head: true })
     .gte("fetched_at", today);
@@ -82,7 +89,7 @@ export async function insertPapers(papers: Paper[]): Promise<number> {
 
   const rows = papers.map(mapPaperToDb);
 
-  const { error } = await supabaseAdmin
+  const { error } = await getSupabaseAdmin()
     .from("papers")
     .upsert(rows, { onConflict: "id" });
 
@@ -95,7 +102,7 @@ export async function insertPapers(papers: Paper[]): Promise<number> {
 }
 
 export async function getTags(): Promise<Record<string, number>> {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("tags")
     .select("name, count");
 
@@ -115,19 +122,19 @@ export async function incrementTags(tagNames: string[]): Promise<void> {
   if (tagNames.length === 0) return;
 
   for (const name of tagNames) {
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await getSupabaseAdmin()
       .from("tags")
       .select("count")
       .eq("name", name)
       .single();
 
     if (existing) {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from("tags")
         .update({ count: existing.count + 1 })
         .eq("name", name);
     } else {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from("tags")
         .upsert({ name, count: 1 }, { onConflict: "name" });
     }
@@ -135,7 +142,7 @@ export async function incrementTags(tagNames: string[]): Promise<void> {
 }
 
 export async function getLastFetchTime(): Promise<string | null> {
-  const { data } = await supabaseAdmin
+  const { data } = await getSupabaseAdmin()
     .from("meta")
     .select("value")
     .eq("key", "last_fetch")
@@ -145,13 +152,13 @@ export async function getLastFetchTime(): Promise<string | null> {
 }
 
 export async function setLastFetchTime(time: string): Promise<void> {
-  await supabaseAdmin
+  await getSupabaseAdmin()
     .from("meta")
     .upsert({ key: "last_fetch", value: time }, { onConflict: "key" });
 }
 
 export async function getTotalPapersCount(): Promise<number> {
-  const { count } = await supabaseAdmin
+  const { count } = await getSupabaseAdmin()
     .from("papers")
     .select("*", { count: "exact", head: true });
 
