@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
 import type { FetchResult } from "@/types/paper";
 import { fetchArxivPapers, fetchSemanticScholarPapers } from "@/lib/fetchers";
-import { insertPapers, getAllPapers, incrementTags, setLastFetchTime } from "@/lib/db";
+import { insertPapers, getAllPapers, incrementTags, setLastFetchTime, clearAllPapers, clearAllTags } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const reset = url.searchParams.get("reset") === "true";
+
+    // If reset flag is set, clear all existing data first
+    if (reset) {
+      await clearAllPapers();
+      await clearAllTags();
+    }
+
     // Fetch from both sources in parallel
     const [arxivPapers, semanticPapers] = await Promise.all([
       fetchArxivPapers(),
