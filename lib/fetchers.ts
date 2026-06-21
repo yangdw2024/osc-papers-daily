@@ -2,13 +2,6 @@ import type { Paper } from "@/types/paper";
 import { KEYWORDS, autoTag } from "./keywords";
 import { generateId } from "./utils";
 
-const ARXIV_DELAY_MS = 3000;
-const SEMANTIC_SCHOLAR_DELAY_MS = 2000;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 interface ArxivEntry {
   title: string[];
   author: Array<{ name: string[] }>;
@@ -20,19 +13,16 @@ interface ArxivEntry {
 export async function fetchArxivPapers(): Promise<Paper[]> {
   const papers: Paper[] = [];
 
-  for (const keyword of KEYWORDS) {
-    try {
-      const query = encodeURIComponent(keyword);
-      const url = `http://export.arxiv.org/api/query?search_query=all:${query}&start=0&max_results=20&sortBy=submittedDate&sortOrder=descending`;
+  // Merge all keywords into a single OR query to reduce API calls
+  const query = KEYWORDS.map((k) => `all:${k}`).join("+OR+");
+  const url = `http://export.arxiv.org/api/query?search_query=${query}&start=0&max_results=50&sortBy=submittedDate&sortOrder=descending`;
 
-      const response = await fetch(url, {
-        headers: { "Accept": "application/atom+xml" },
-      });
+  try {
+    const response = await fetch(url, {
+      headers: { "Accept": "application/atom+xml" },
+    });
 
-      if (!response.ok) {
-        continue;
-      }
-
+    if (response.ok) {
       const xmlText = await response.text();
       const entries = parseArxivXml(xmlText);
 
@@ -58,11 +48,9 @@ export async function fetchArxivPapers(): Promise<Paper[]> {
 
         papers.push(paper);
       }
-
-      await sleep(ARXIV_DELAY_MS);
-    } catch (error) {
-      console.error(`arXiv fetch error for "${keyword}":`, error);
     }
+  } catch (error) {
+    console.error("arXiv fetch error:", error);
   }
 
   return papers;
@@ -125,24 +113,16 @@ interface SemanticScholarPaper {
 export async function fetchSemanticScholarPapers(): Promise<Paper[]> {
   const papers: Paper[] = [];
 
-  for (const keyword of KEYWORDS) {
-    try {
-      const query = encodeURIComponent(keyword);
-      const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${query}&fields=paperId,title,authors,abstract,publicationDate,externalIds,openAccessPdf,url&limit=20&sort=publicationDate:desc`;
+  // Use a broad query to get papers in one request
+  const query = encodeURIComponent("organic solar cell OR organic photovoltaic OR non-fullerene acceptor");
+  const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${query}&fields=paperId,title,authors,abstract,publicationDate,externalIds,openAccessPdf,url&limit=50&sort=publicationDate:desc`;
 
-      const response = await fetch(url, {
-        headers: {
-          "Accept": "application/json",
-        },
-      });
+  try {
+    const response = await fetch(url, {
+      headers: { "Accept": "application/json" },
+    });
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          await sleep(5000);
-        }
-        continue;
-      }
-
+    if (response.ok) {
       const data = await response.json();
       const items: SemanticScholarPaper[] = data.data || [];
 
@@ -171,11 +151,9 @@ export async function fetchSemanticScholarPapers(): Promise<Paper[]> {
 
         papers.push(paper);
       }
-
-      await sleep(SEMANTIC_SCHOLAR_DELAY_MS);
-    } catch (error) {
-      console.error(`Semantic Scholar fetch error for "${keyword}":`, error);
     }
+  } catch (error) {
+    console.error("Semantic Scholar fetch error:", error);
   }
 
   return papers;
