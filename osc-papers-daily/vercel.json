@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/fetch-papers",
-      "schedule": "0 0 * * *"
-    }
-  ]
-}
