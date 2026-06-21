@@ -1,18 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Paper } from "@/types/paper";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-// 客户端（只读，用于前端页面）
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// 服务端（读写，用于 API 路由）
 export const supabaseAdmin = supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey)
   : createClient(supabaseUrl, supabaseAnonKey);
-
-// ========== 论文操作 ==========
 
 export async function getAllPapers(): Promise<Paper[]> {
   const { data, error } = await supabaseAdmin
@@ -39,12 +36,10 @@ export async function getPapersWithFilter(options: {
 
   let query = supabaseAdmin.from("papers").select("*", { count: "exact" });
 
-  // 按标签筛选
   if (tag && tag !== "all") {
     query = query.contains("tags", [tag]);
   }
 
-  // 关键词搜索
   if (search) {
     const searchLower = `%${search.toLowerCase()}%`;
     query = query.or(
@@ -52,14 +47,12 @@ export async function getPapersWithFilter(options: {
     );
   }
 
-  // 排序
   if (sort === "date-asc") {
     query = query.order("published_date", { ascending: true });
   } else {
     query = query.order("published_date", { ascending: false });
   }
 
-  // 分页
   const from = (page - 1) * limit;
   const to = from + limit - 1;
   query = query.range(from, to);
@@ -71,7 +64,6 @@ export async function getPapersWithFilter(options: {
     return { papers: [], total: 0, todayCount: 0 };
   }
 
-  // 今日新增数
   const today = new Date().toISOString().split("T")[0];
   const { count: todayCount } = await supabaseAdmin
     .from("papers")
@@ -88,10 +80,8 @@ export async function getPapersWithFilter(options: {
 export async function insertPapers(papers: Paper[]): Promise<number> {
   if (papers.length === 0) return 0;
 
-  // 转换为数据库格式
   const rows = papers.map(mapPaperToDb);
 
-  // 使用 upsert，基于 id 去重
   const { error } = await supabaseAdmin
     .from("papers")
     .upsert(rows, { onConflict: "id" });
@@ -103,8 +93,6 @@ export async function insertPapers(papers: Paper[]): Promise<number> {
 
   return papers.length;
 }
-
-// ========== 标签操作 ==========
 
 export async function getTags(): Promise<Record<string, number>> {
   const { data, error } = await supabaseAdmin
@@ -127,7 +115,6 @@ export async function incrementTags(tagNames: string[]): Promise<void> {
   if (tagNames.length === 0) return;
 
   for (const name of tagNames) {
-    // 尝试更新已有标签
     const { data: existing } = await supabaseAdmin
       .from("tags")
       .select("count")
@@ -146,8 +133,6 @@ export async function incrementTags(tagNames: string[]): Promise<void> {
     }
   }
 }
-
-// ========== 系统状态 ==========
 
 export async function getLastFetchTime(): Promise<string | null> {
   const { data } = await supabaseAdmin
@@ -172,8 +157,6 @@ export async function getTotalPapersCount(): Promise<number> {
 
   return count || 0;
 }
-
-// ========== 数据映射 ==========
 
 interface DbPaper {
   id: string;
