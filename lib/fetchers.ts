@@ -1,3 +1,4 @@
+import type { Paper } from "@/types/paper";
 import { KEYWORDS, autoTag } from "./keywords";
 import { generateId } from "./utils";
 
@@ -18,7 +19,6 @@ interface ArxivEntry {
 
 export async function fetchArxivPapers(): Promise<Paper[]> {
   const papers: Paper[] = [];
-  const errors: string[] = [];
 
   for (const keyword of KEYWORDS) {
     try {
@@ -30,7 +30,6 @@ export async function fetchArxivPapers(): Promise<Paper[]> {
       });
 
       if (!response.ok) {
-        errors.push(`arXiv API error for "${keyword}": ${response.status}`);
         continue;
       }
 
@@ -62,7 +61,7 @@ export async function fetchArxivPapers(): Promise<Paper[]> {
 
       await sleep(ARXIV_DELAY_MS);
     } catch (error) {
-      errors.push(`arXiv fetch error for "${keyword}": ${String(error)}`);
+      console.error(`arXiv fetch error for "${keyword}":`, error);
     }
   }
 
@@ -125,7 +124,6 @@ interface SemanticScholarPaper {
 
 export async function fetchSemanticScholarPapers(): Promise<Paper[]> {
   const papers: Paper[] = [];
-  const errors: string[] = [];
 
   for (const keyword of KEYWORDS) {
     try {
@@ -141,9 +139,6 @@ export async function fetchSemanticScholarPapers(): Promise<Paper[]> {
       if (!response.ok) {
         if (response.status === 429) {
           await sleep(5000);
-          errors.push(`Semantic Scholar rate limited for "${keyword}"`);
-        } else {
-          errors.push(`Semantic Scholar API error for "${keyword}": ${response.status}`);
         }
         continue;
       }
@@ -179,7 +174,7 @@ export async function fetchSemanticScholarPapers(): Promise<Paper[]> {
 
       await sleep(SEMANTIC_SCHOLAR_DELAY_MS);
     } catch (error) {
-      errors.push(`Semantic Scholar fetch error for "${keyword}": ${String(error)}`);
+      console.error(`Semantic Scholar fetch error for "${keyword}":`, error);
     }
   }
 
