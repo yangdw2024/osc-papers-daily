@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import type { FetchResult } from "@/types/paper";
 import { fetchArxivPapers, fetchSemanticScholarPapers } from "@/lib/fetchers";
-import { insertPapers, getTags, incrementTags, setLastFetchTime, getAllPapers } from "@/lib/db";
+import { insertPapers, getAllPapers, incrementTags, setLastFetchTime } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
@@ -20,16 +21,12 @@ export async function GET(request: Request) {
 
     const allFetched = [...arxivPapers, ...semanticPapers];
 
-    // 去重：检查已有论文
     const existingPapers = await getAllPapers();
     const existingIds = new Set(existingPapers.map((p) => p.id));
     const newPapers = allFetched.filter((p) => !existingIds.has(p.id));
 
-    // 插入新论文到数据库
     if (newPapers.length > 0) {
       await insertPapers(newPapers);
-
-      // 更新标签计数
       const allTagNames = newPapers.flatMap((p) => p.tags);
       await incrementTags(allTagNames);
     }
