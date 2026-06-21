@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Calendar, User, ExternalLink, Tag, ChevronDown, ChevronUp } from "lucide-react";
 import { formatDate, truncateAbstract } from "@/lib/utils";
+import type { Paper } from "@/types/paper";
 
 interface PaperCardProps {
   paper: Paper;
