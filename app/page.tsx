@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, TrendingUp, Calendar, ArrowRight, Sparkles } from "lucide-react";
 import PaperCard from "@/components/PaperCard";
+import type { Paper } from "@/types/paper";
 
 export default function HomePage() {
   const [stats, setStats] = useState({ todayCount: 0, totalPapers: 0 });
