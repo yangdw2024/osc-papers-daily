@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { Search, Filter, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import PaperCard from "@/components/PaperCard";
 import TagFilter from "@/components/TagFilter";
+import type { Paper } from "@/types/paper";
+import type { TagInfo } from "@/types/paper";
 
 export default function PapersPage() {
   const [papers, setPapers] = useState<Paper[]>([]);
