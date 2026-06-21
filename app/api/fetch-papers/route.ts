@@ -3,21 +3,15 @@ import type { FetchResult } from "@/types/paper";
 import { fetchArxivPapers, fetchSemanticScholarPapers } from "@/lib/fetchers";
 import { insertPapers, getAllPapers, incrementTags, setLastFetchTime } from "@/lib/db";
 
-export async function GET(request: Request) {
+export const dynamic = "force-dynamic";
+
+export async function GET() {
   try {
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      const url = new URL(request.url);
-      const isVercelCron = url.searchParams.get("source") === "vercel-cron";
-      if (!isVercelCron) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    }
-
-    const arxivPapers = await fetchArxivPapers();
-    const semanticPapers = await fetchSemanticScholarPapers();
+    // Fetch from both sources in parallel
+    const [arxivPapers, semanticPapers] = await Promise.all([
+      fetchArxivPapers(),
+      fetchSemanticScholarPapers(),
+    ]);
 
     const allFetched = [...arxivPapers, ...semanticPapers];
 
