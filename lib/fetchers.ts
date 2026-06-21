@@ -13,8 +13,8 @@ interface ArxivEntry {
 export async function fetchArxivPapers(): Promise<Paper[]> {
   const papers: Paper[] = [];
 
-  // Single precise query: search within materials science and applied physics categories
-  const query = 'cat:cond-mat.mtrl-sci+OR+cat:physics.app-ph+AND+("organic solar cell" OR "organic photovoltaic" OR "bulk heterojunction" OR "non-fullerene acceptor" OR "OPV" OR "polymer solar cell")';
+  // Precise query: (category filter) AND (keyword filter)
+  const query = '(cat:cond-mat.mtrl-sci+OR+cat:physics.app-ph)+AND+("organic solar cell" OR "organic photovoltaic" OR "bulk heterojunction" OR "non-fullerene acceptor" OR "OPV" OR "polymer solar cell")';
   const url = `http://export.arxiv.org/api/query?search_query=${query}&start=0&max_results=30&sortBy=submittedDate&sortOrder=descending`;
 
   try {
