@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { FetchResult } from "@/types/paper";
 import { fetchArxivPapers, fetchSemanticScholarPapers } from "@/lib/fetchers";
-import { insertPapers, getAllPapers, incrementTags, setLastFetchTime, clearAllPapers, clearAllTags } from "@/lib/db";
+import { insertPapers, setLastFetchTime, clearAllPapers, clearAllTags } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,6 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const reset = url.searchParams.get("reset") === "true";
 
-    // If reset flag is set, clear all existing data first
     if (reset) {
       await clearAllPapers();
       await clearAllTags();
@@ -24,22 +23,17 @@ export async function GET(request: Request) {
 
     const allFetched = [...arxivPapers, ...semanticPapers];
 
-    const existingPapers = await getAllPapers();
-    const existingIds = new Set(existingPapers.map((p) => p.id));
-    const newPapers = allFetched.filter((p) => !existingIds.has(p.id));
-
-    if (newPapers.length > 0) {
-      await insertPapers(newPapers);
-      const allTagNames = newPapers.flatMap((p) => p.tags);
-      await incrementTags(allTagNames);
+    // Directly upsert all papers (deduplication handled by onConflict)
+    if (allFetched.length > 0) {
+      await insertPapers(allFetched);
     }
 
     await setLastFetchTime(new Date().toISOString());
 
     const result: FetchResult = {
       totalFetched: allFetched.length,
-      newPapers: newPapers.length,
-      duplicates: allFetched.length - newPapers.length,
+      newPapers: allFetched.length,
+      duplicates: 0,
       errors: [],
     };
 
