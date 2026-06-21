@@ -157,6 +157,14 @@ export async function setLastFetchTime(time: string): Promise<void> {
     .upsert({ key: "last_fetch", value: time }, { onConflict: "key" });
 }
 
+export async function clearAllPapers(): Promise<void> {
+  await getSupabaseAdmin().from("papers").delete().neq("id", "");
+}
+
+export async function clearAllTags(): Promise<void> {
+  await getSupabaseAdmin().from("tags").delete().neq("name", "");
+}
+
 export async function getTotalPapersCount(): Promise<number> {
   const { count } = await getSupabaseAdmin()
     .from("papers")
