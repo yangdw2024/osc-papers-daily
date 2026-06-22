@@ -1,43 +1,29 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, TrendingUp, Calendar, ArrowRight, Sparkles } from "lucide-react";
 import PaperCard from "@/components/PaperCard";
+import { getPapersWithFilter, getTotalPapersCount } from "@/lib/db";
 import type { Paper } from "@/types/paper";
 
-export default function HomePage() {
-  const [stats, setStats] = useState({ todayCount: 0, totalPapers: 0 });
-  const [recentPapers, setRecentPapers] = useState<Paper[]>([]);
-  const [loading, setLoading] = useState(true);
+export const dynamic = "force-dynamic";
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [papersRes, healthRes] = await Promise.all([
-          fetch("/api/get-papers?limit=6"),
-          fetch("/api/health"),
-        ]);
+export default async function HomePage() {
+  let stats = { todayCount: 0, totalPapers: 0 };
+  let recentPapers: Paper[] = [];
 
-        if (papersRes.ok) {
-          const papersData = await papersRes.json();
-          setRecentPapers(papersData.papers || []);
-          setStats((prev) => ({ ...prev, todayCount: papersData.todayCount || 0 }));
-        }
+  try {
+    const [papersData, totalPapers] = await Promise.all([
+      getPapersWithFilter({ limit: 6, sort: "date-desc" }),
+      getTotalPapersCount(),
+    ]);
 
-        if (healthRes.ok) {
-          const healthData = await healthRes.json();
-          setStats((prev) => ({ ...prev, totalPapers: healthData.totalPapers || 0 }));
-        }
-      } catch (error) {
-        console.error("Failed to fetch home data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
+    recentPapers = papersData.papers;
+    stats = {
+      todayCount: papersData.todayCount,
+      totalPapers,
+    };
+  } catch (error) {
+    console.error("HomePage fetch error:", error);
+  }
 
   return (
     <div className="min-h-screen">
@@ -74,7 +60,7 @@ export default function HomePage() {
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Calendar className="h-6 w-6 text-primary-600" />
                 <span className="text-3xl font-bold text-gray-900">
-                  {loading ? "-" : stats.todayCount}
+                  {stats.todayCount}
                 </span>
               </div>
               <p className="text-gray-500">今日新增论文</p>
@@ -83,7 +69,7 @@ export default function HomePage() {
               <div className="flex items-center justify-center gap-2 mb-2">
                 <BookOpen className="h-6 w-6 text-primary-600" />
                 <span className="text-3xl font-bold text-gray-900">
-                  {loading ? "-" : stats.totalPapers}
+                  {stats.totalPapers}
                 </span>
               </div>
               <p className="text-gray-500">累计收录论文</p>
@@ -113,12 +99,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-              <p className="mt-4 text-gray-500">加载中...</p>
-            </div>
-          ) : recentPapers.length > 0 ? (
+          {recentPapers.length > 0 ? (
             <div className="grid gap-6">
               {recentPapers.map((paper) => (
                 <PaperCard key={paper.id} paper={paper} />
