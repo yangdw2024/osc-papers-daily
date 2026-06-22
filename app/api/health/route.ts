@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getLastFetchTime, getTotalPapersCount } from "@/lib/db";
 
+
+export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const lastFetch = await getLastFetchTime();
